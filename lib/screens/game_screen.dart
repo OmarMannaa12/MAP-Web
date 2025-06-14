@@ -5,7 +5,6 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:map/models/quiz_card.dart';
 
-// Enum and helper functions remain unchanged
 enum GameState { loading, answering, showingResult, error }
 
 String capitalizeFirst(String? text) {
@@ -22,14 +21,8 @@ String capitalizeSentences(String? text) {
   if (text == null || text.trim().isEmpty) return text ?? '';
   String processedText = text.trim();
   processedText = capitalizeFirst(processedText);
-  processedText = processedText.replaceAllMapped(
-    RegExp(r'(?<=[.!?]\s+)\w'),
-        (match) => match.group(0)!.toUpperCase(),
-  );
-  processedText = processedText.replaceAllMapped(
-    RegExp(r'(?<=[.!?])\w'),
-        (match) => match.group(0)!.toUpperCase(),
-  );
+  processedText = processedText.replaceAllMapped(RegExp(r'(?<=[.!?]\s+)\w'), (match) => match.group(0)!.toUpperCase());
+  processedText = processedText.replaceAllMapped(RegExp(r'(?<=[.!?])\w'), (match) => match.group(0)!.toUpperCase());
   return processedText;
 }
 
@@ -41,7 +34,6 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
-  // State variables remain unchanged
   GameState _gameState = GameState.loading;
   List<QuizCard> _allCards = [];
   QuizCard? _currentCard;
@@ -51,46 +43,30 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   final math.Random _random = math.Random();
   bool _isHintVisible = false;
 
-  // Animation Controllers remain unchanged
   late AnimationController _feedbackAnimationController;
   Animation<Color?>? _feedbackColorAnimation;
   late AnimationController _cardIntroAnimationController;
   late AnimationController _explanationAnimationController;
 
-  // Progress tracking
   int _questionCount = 0;
   int _correctCount = 0;
 
-  // Duolingo colors
   final Color _primaryColor = const Color(0xFF58CC02);
   final Color _secondaryColor = const Color(0xFF1CB0F6);
   final Color _accentColor = const Color(0xFFFFC800);
   final Color _incorrectColor = const Color(0xFFFF4B4B);
   final Color _backgroundLightColor = const Color(0xFFFAFAFA);
-  final Color _backgroundDarkColor = const Color(0xFF2B70C9);
   final Color _textColor = const Color(0xFF4B4B4B);
 
   @override
   void initState() {
     super.initState();
-    _feedbackAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _feedbackColorAnimation = ColorTween(
-      begin: Colors.transparent,
-      end: Colors.transparent,
-    ).animate(_feedbackAnimationController)..addListener(() {
+    _feedbackAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
+    _feedbackColorAnimation = ColorTween(begin: Colors.transparent, end: Colors.transparent).animate(_feedbackAnimationController)..addListener(() {
       if(mounted) setState(() {});
     });
-    _cardIntroAnimationController = AnimationController(
-        duration: const Duration(milliseconds: 600),
-        vsync: this
-    );
-    _explanationAnimationController = AnimationController(
-        duration: const Duration(milliseconds: 400),
-        vsync: this
-    );
+    _cardIntroAnimationController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
+    _explanationAnimationController = AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
     _fetchCards();
   }
 
@@ -102,15 +78,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // All methods remain unchanged
   Future<void> _fetchCards() async {
     if (!mounted) return;
     setState(() { _gameState = GameState.loading; _errorMessage = ''; });
 
     try {
-      final QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('cards')
-          .get();
+      final QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('cards').get();
 
       if (snapshot.docs.isEmpty) {
         if (!mounted) return;
@@ -142,14 +115,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       if (!mounted) return;
       print("Error fetching cards: $e");
       setState(() {
-        if (e is FirebaseException && e.code == 'permission-denied') {
-          _errorMessage = "Permission denied. Check Firestore rules.";
-        } else if (e is FirebaseException && e.code == 'unavailable'){
-          _errorMessage = "Network error. Could not reach Firestore.";
-        }
-        else {
-          _errorMessage = "Failed to load questions. Please try again.";
-        }
+        _errorMessage = e is FirebaseException && e.code == 'permission-denied' ? "Permission denied. Check Firestore rules." :
+        e is FirebaseException && e.code == 'unavailable' ? "Network error. Could not reach Firestore." :
+        "Failed to load questions. Please try again.";
         _gameState = GameState.error;
       });
     }
@@ -178,28 +146,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     choices.addAll(_currentCard!.distractors.map((text) => ChoiceCard(text: text, isCorrect: false)));
     choices.shuffle(_random);
     _currentChoices = choices.take(4).toList();
-    if (_currentCard!.cardType == 'multipleChoice' && (_currentChoices.where((c) => c.isCorrect).length + _currentChoices.where((c) => !c.isCorrect).length) < 2) {
-      print("Warning: Multiple choice card ${_currentCard!.id} has less than 2 total choices (answer + distractors).");
-    }
   }
 
   void _checkAnswer(bool isCorrect) {
     if (!mounted || _gameState != GameState.answering) return;
     _lastAnswerCorrect = isCorrect;
 
-    // Update progress
     _questionCount++;
-    if (isCorrect) {
-      _correctCount++;
-    }
+    if (isCorrect) _correctCount++;
 
     final animation = ColorTween(
       begin: Colors.transparent,
       end: isCorrect ? _primaryColor.withOpacity(0.15) : _incorrectColor.withOpacity(0.1),
-    ).animate(CurvedAnimation(
-      parent: _feedbackAnimationController,
-      curve: Curves.easeOut,
-    ));
+    ).animate(CurvedAnimation(parent: _feedbackAnimationController, curve: Curves.easeOut));
     _feedbackColorAnimation = animation;
     _feedbackAnimationController.forward().then((_) {
       if(!mounted) return;
@@ -223,39 +182,24 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     final currentHint = _currentCard?.hint;
     if (currentHint != null && currentHint.isNotEmpty && mounted) {
-      setState(() {
-        _isHintVisible = true;
-      });
-
+      setState(() { _isHintVisible = true; });
       Future.delayed(const Duration(seconds: 5), () {
-        if (mounted && _isHintVisible) {
-          setState(() {
-            _isHintVisible = false;
-          });
-        }
+        if (mounted && _isHintVisible) setState(() { _isHintVisible = false; });
       });
     } else if (mounted) {
       ScaffoldMessenger.of(context).removeCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            "No hint available for this question.",
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          content: Text("No hint available for this question.", style: TextStyle(fontWeight: FontWeight.w600)),
           backgroundColor: _secondaryColor,
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     }
   }
 
-  // REDESIGNED UI FOR MAIN BUILD METHOD - Duolingo style
   @override
   Widget build(BuildContext context) {
     Widget bodyContent;
@@ -269,18 +213,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  spreadRadius: 0,
-                )
-              ],
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, spreadRadius: 0)],
             ),
-            child: CircularProgressIndicator(
-              color: _primaryColor,
-              strokeWidth: 5,
-            ),
+            child: CircularProgressIndicator(color: _primaryColor, strokeWidth: 5),
           ),
         );
         break;
@@ -292,32 +227,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  spreadRadius: 0,
-                )
-              ],
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, spreadRadius: 0)],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.error_outline_rounded,
-                  size: 48,
-                  color: _incorrectColor,
-                ),
+                Icon(Icons.error_outline_rounded, size: 48, color: _incorrectColor),
                 const SizedBox(height: 16),
-                Text(
-                  _errorMessage,
-                  style: TextStyle(
-                    color: _textColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+                Text(_errorMessage, style: TextStyle(color: _textColor, fontSize: 16, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: _fetchCards,
@@ -325,18 +242,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     backgroundColor: _primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 2,
                   ),
-                  child: const Text(
-                    "TRY AGAIN",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
+                  child: const Text("TRY AGAIN", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ],
             ),
@@ -350,9 +259,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          color: _backgroundLightColor,
-        ),
+        decoration: BoxDecoration(color: _backgroundLightColor),
         child: AnimatedBuilder(
             animation: _feedbackAnimationController,
             builder: (context, _) {
@@ -366,24 +273,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  // REDESIGNED GAME CONTENT UI WITH DUOLINGO STYLE
   Widget _buildGameContentUI() {
     if (_currentCard == null) {
-      return Center(
-        child: Text(
-          "Error: No current question.",
-          style: TextStyle(
-            color: _textColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
-          ),
-        ),
-      );
+      return Center(child: Text("Error: No current question.", style: TextStyle(color: _textColor, fontWeight: FontWeight.w600, fontSize: 16)));
     }
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Responsive Size Calculation
         const double horizontalPadding = 16.0 * 2;
         const double verticalPadding = 16.0 * 2;
         final double availableWidth = constraints.maxWidth - horizontalPadding;
@@ -397,37 +293,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         double cardSize = math.min(cardMaxWidth, cardMaxHeight);
         cardSize = cardSize.clamp(90.0, 200.0);
 
-        // STACK LAYOUT
         return Stack(
           children: [
-            // Progress bar at the top
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: _buildProgressBar(),
-            ),
-
-            // Main content
+            Positioned(top: 0, left: 0, right: 0, child: _buildProgressBar()),
             Padding(
               padding: const EdgeInsets.fromLTRB(16.0, 48.0, 16.0, 16.0),
               child: Column(
                 children: [
-                  // --- Top: Question Panel ---
                   ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: questionPanelMaxHeight,
-                      minHeight: 70,
-                    ),
-                    child: _buildQuestionPanel(
-                      _currentCard!.prompt,
-                      onHintPressed: (_gameState == GameState.answering) ? _showHint : null,
-                      key: ValueKey<String>('question_${_currentCard!.id}'),
-                    ),
+                    constraints: BoxConstraints(maxHeight: questionPanelMaxHeight, minHeight: 70),
+                    child: _buildQuestionPanel(_currentCard!.prompt, onHintPressed: (_gameState == GameState.answering) ? _showHint : null, key: ValueKey<String>('question_${_currentCard!.id}')),
                   ),
                   const SizedBox(height: 24),
-
-                  // --- Middle: Answer Grid ---
                   Expanded(
                     child: Center(
                       child: IgnorePointer(
@@ -442,13 +319,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                 mainAxisSize: MainAxisSize.min,
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  _currentChoices.isNotEmpty
-                                      ? _buildCard(0, _currentChoices, cardSize, 0)
-                                      : SizedBox(width: cardSize),
+                                  _currentChoices.isNotEmpty ? _buildCard(0, _currentChoices, cardSize, 0) : SizedBox(width: cardSize),
                                   SizedBox(width: spacing),
-                                  _currentChoices.length > 1
-                                      ? _buildCard(1, _currentChoices, cardSize, 1)
-                                      : SizedBox(width: cardSize),
+                                  _currentChoices.length > 1 ? _buildCard(1, _currentChoices, cardSize, 1) : SizedBox(width: cardSize),
                                 ],
                               ),
                               SizedBox(height: spacing),
@@ -456,13 +329,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                 mainAxisSize: MainAxisSize.min,
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  _currentChoices.length > 2
-                                      ? _buildCard(2, _currentChoices, cardSize, 2)
-                                      : SizedBox(width: cardSize),
+                                  _currentChoices.length > 2 ? _buildCard(2, _currentChoices, cardSize, 2) : SizedBox(width: cardSize),
                                   SizedBox(width: spacing),
-                                  _currentChoices.length > 3
-                                      ? _buildCard(3, _currentChoices, cardSize, 3)
-                                      : SizedBox(width: cardSize),
+                                  _currentChoices.length > 3 ? _buildCard(3, _currentChoices, cardSize, 3) : SizedBox(width: cardSize),
                                 ],
                               ),
                             ],
@@ -474,15 +343,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ],
               ),
             ),
-
-            // --- Overlay Layer (Explanation Panel) ---
-            if (_gameState == GameState.showingResult)
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: _buildExplanationPanel(explanation: _currentCard?.explanation),
-              ),
-
-            // --- Overlay Layer (Hint Panel) ---
+            if (_gameState == GameState.showingResult) Align(alignment: Alignment.bottomCenter, child: _buildExplanationPanel(explanation: _currentCard?.explanation)),
             IgnorePointer(
               ignoring: !_isHintVisible,
               child: AnimatedOpacity(
@@ -497,38 +358,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  // PROGRESS BAR - DUOLINGO STYLE
   Widget _buildProgressBar() {
     return Container(
       height: 32,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 3,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 3, offset: const Offset(0, 2))],
       ),
       child: Row(
         children: [
-          // Health icons
-          Row(
-            children: List.generate(3, (index) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: Icon(
-                  Icons.favorite,
-                  color: _incorrectColor,
-                  size: 20,
-                ),
-              );
-            }),
-          ),
-
-          // Progress bar
+          Row(children: List.generate(3, (index) => Padding(padding: const EdgeInsets.only(right: 4), child: Icon(Icons.favorite, color: _incorrectColor, size: 20)))),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -543,26 +383,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
-
-          // XP display
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: _accentColor,
-              borderRadius: BorderRadius.circular(10),
-            ),
+            decoration: BoxDecoration(color: _accentColor, borderRadius: BorderRadius.circular(10)),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  "${_correctCount * 10} XP",
-                  style: TextStyle(
-                    color: _textColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+              children: [Text("${_correctCount * 10} XP", style: TextStyle(color: _textColor, fontWeight: FontWeight.bold, fontSize: 12))],
             ),
           ),
         ],
@@ -570,7 +396,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  // REDESIGNED QUESTION PANEL - DUOLINGO STYLE
   Widget _buildQuestionPanel(String question, {Key? key, VoidCallback? onHintPressed}) {
     return Container(
       key: key,
@@ -579,13 +404,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -594,37 +413,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(
-                Icons.school_rounded,
-                color: _primaryColor,
-                size: 20,
-              ),
-              Text(
-                "TRANSLATE THIS SENTENCE",
-                style: TextStyle(
-                  color: _secondaryColor,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                  letterSpacing: 0.5,
-                ),
-              ),
+              Icon(Icons.school_rounded, color: _primaryColor, size: 20),
+              Text("TRANSLATE THIS SENTENCE", style: TextStyle(color: _secondaryColor, fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.5)),
               GestureDetector(
                 onTap: onHintPressed != null && !_isHintVisible ? _showHint : null,
                 child: Container(
                   padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: onHintPressed != null
-                        ? _accentColor
-                        : Colors.grey.shade300,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.lightbulb_outline,
-                    color: onHintPressed != null
-                        ? _textColor
-                        : Colors.grey,
-                    size: 16,
-                  ),
+                  decoration: BoxDecoration(color: onHintPressed != null ? _accentColor : Colors.grey.shade300, shape: BoxShape.circle),
+                  child: Icon(Icons.lightbulb_outline, color: onHintPressed != null ? _textColor : Colors.grey, size: 16),
                 ),
               ),
             ],
@@ -634,12 +430,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             child: AutoSizeText(
               capitalizeSentences(question),
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _textColor,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                height: 1.35,
-              ),
+              style: TextStyle(color: _textColor, fontSize: 22, fontWeight: FontWeight.w700, height: 1.35),
               minFontSize: 14,
               maxLines: 5,
               overflow: TextOverflow.ellipsis,
@@ -650,28 +441,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  // REDESIGNED CARD ITEM FOR DUOLINGO STYLE
   Widget _buildCard(int index, List<ChoiceCard> cards, double size, int animationIndex) {
-    if (index < 0 || index >= cards.length) {
-      return SizedBox(width: size, height: size);
-    }
+    if (index < 0 || index >= cards.length) return SizedBox(width: size, height: size);
 
     final intervalStart = (animationIndex * 0.12).clamp(0.0, 1.0);
     final intervalEnd = (intervalStart + 0.4).clamp(0.0, 1.0);
-    final animation = CurvedAnimation(
-        parent: _cardIntroAnimationController,
-        curve: Interval(
-            intervalStart,
-            intervalEnd,
-            curve: Curves.easeOutQuad
-        )
-    );
-
-    final slideAnimation = Tween<Offset>(
-      begin: const Offset(0.0, 0.3),
-      end: Offset.zero,
-    ).animate(animation);
-
+    final animation = CurvedAnimation(parent: _cardIntroAnimationController, curve: Interval(intervalStart, intervalEnd, curve: Curves.easeOutQuad));
+    final slideAnimation = Tween<Offset>(begin: const Offset(0.0, 0.3), end: Offset.zero).animate(animation);
     final cardData = cards[index];
 
     return FadeTransition(
@@ -694,7 +470,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  // REDESIGNED EXPLANATION PANEL - DUOLINGO STYLE
   Widget _buildExplanationPanel({String? explanation}) {
     final Color resultColor = _lastAnswerCorrect ? _primaryColor : _incorrectColor;
     final String resultText = _lastAnswerCorrect ? "Correct!" : "Incorrect";
@@ -702,74 +477,36 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     final String correctAnswerDisplay = capitalizeFirst(_currentCard?.answer) ?? 'N/A';
 
     return SlideTransition(
-      position: Tween<Offset>(
-        begin: const Offset(0.0, 1.0),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(
-          parent: _explanationAnimationController,
-          curve: Curves.easeOutQuart
-      )),
+      position: Tween<Offset>(begin: const Offset(0.0, 1.0), end: Offset.zero).animate(CurvedAnimation(parent: _explanationAnimationController, curve: Curves.easeOutQuart)),
       child: Container(
         margin: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 15,
-              spreadRadius: 0,
-              offset: const Offset(0, 4),
-            )
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 15, spreadRadius: 0, offset: const Offset(0, 4))],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Result header
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: resultColor,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
-                ),
-              ),
+              decoration: BoxDecoration(color: resultColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(20))),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    _lastAnswerCorrect ? Icons.check_circle : Icons.cancel,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                  Icon(_lastAnswerCorrect ? Icons.check_circle : Icons.cancel, color: Colors.white, size: 24),
                   const SizedBox(width: 8),
-                  Text(
-                    resultText,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Text(resultText, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
-            // Explanation content
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Correct Answer:",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF4B4B4B),
-                    ),
-                  ),
+                  const Text("Correct Answer:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF4B4B4B))),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -777,39 +514,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     decoration: BoxDecoration(
                       color: _primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: _primaryColor.withOpacity(0.2),
-                        width: 1,
-                      ),
+                      border: Border.all(color: _primaryColor.withOpacity(0.2), width: 1),
                     ),
-                    child: Text(
-                      correctAnswerDisplay,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: _textColor,
-                      ),
-                    ),
+                    child: Text(correctAnswerDisplay, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _textColor)),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    "Explanation:",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF4B4B4B),
-                    ),
-                  ),
+                  const Text("Explanation:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF4B4B4B))),
                   const SizedBox(height: 8),
-                  Text(
-                    capitalizeSentences(explanationText),
-                    style: TextStyle(
-                      fontSize: 15,
-                      height: 1.45,
-                      fontWeight: FontWeight.w500,
-                      color: _textColor,
-                    ),
-                  ),
+                  Text(capitalizeSentences(explanationText), style: TextStyle(fontSize: 15, height: 1.45, fontWeight: FontWeight.w500, color: _textColor)),
                   const SizedBox(height: 20),
                   Center(
                     child: ElevatedButton(
@@ -817,20 +529,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         backgroundColor: _primaryColor,
                         foregroundColor: Colors.white,
                         minimumSize: const Size(220, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 2,
                       ),
                       onPressed: _loadRandomQuestion,
-                      child: const Text(
-                        "CONTINUE",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                      ),
+                      child: const Text("CONTINUE", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1)),
                     ),
                   ),
                 ],
@@ -842,7 +545,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  // REDESIGNED HINT PANEL - DUOLINGO STYLE
   Widget _buildHintPanel({String? hint}) {
     final String hintText = hint ?? "Hint not available.";
 
@@ -855,13 +557,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           decoration: BoxDecoration(
             color: _accentColor,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              )
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 4))],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -869,34 +565,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.lightbulb,
-                    color: _textColor,
-                    size: 18,
-                  ),
+                  Icon(Icons.lightbulb, color: _textColor, size: 18),
                   const SizedBox(width: 8),
-                  Text(
-                    "HINT",
-                    style: TextStyle(
-                      color: _textColor,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                      letterSpacing: 1,
-                    ),
-                  ),
+                  Text("HINT", style: TextStyle(color: _textColor, fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: 1)),
                 ],
               ),
               const SizedBox(height: 12),
-              Text(
-                capitalizeSentences(hintText),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  height: 1.4,
-                  fontWeight: FontWeight.w600,
-                  color: _textColor,
-                ),
-              ),
+              Text(capitalizeSentences(hintText), textAlign: TextAlign.center, style: TextStyle(fontSize: 16, height: 1.4, fontWeight: FontWeight.w600, color: _textColor)),
             ],
           ),
         ),
@@ -905,7 +580,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 }
 
-// CardItem widget modified to match the Duolingo style
 class CardItem extends StatefulWidget {
   final ChoiceCard card;
   final VoidCallback onSwipe;
@@ -941,15 +615,11 @@ class _CardItemState extends State<CardItem> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 350),
-      vsync: this,
-    )..addListener(_onAnimationTick)
+    _controller = AnimationController(duration: const Duration(milliseconds: 350), vsync: this)
+      ..addListener(_onAnimationTick)
       ..addStatusListener(_onSwipeAnimationStatusChanged);
-    _resetController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    )..addListener(_onAnimationTick);
+    _resetController = AnimationController(duration: const Duration(milliseconds: 500), vsync: this)
+      ..addListener(_onAnimationTick);
   }
 
   void _onAnimationTick() { if (mounted) setState(() {}); }
@@ -981,10 +651,8 @@ class _CardItemState extends State<CardItem> with TickerProviderStateMixin {
     final endX = _dragOffset.dx.sign * screenWidth * 1.2;
     final endY = _dragOffset.dy * 1.5;
     final endOffset = Offset(endX, endY);
-    final offsetAnim = Tween<Offset>(begin: _dragOffset, end: endOffset)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
-    final angleAnim = Tween<double>(begin: _dragAngle, end: _dragOffset.dx.sign * 0.5)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+    final offsetAnim = Tween<Offset>(begin: _dragOffset, end: endOffset).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+    final angleAnim = Tween<double>(begin: _dragAngle, end: _dragOffset.dx.sign * 0.5).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
     void listener() {
       if(_controller.isAnimating && mounted) {
         setState(() {
@@ -1002,10 +670,8 @@ class _CardItemState extends State<CardItem> with TickerProviderStateMixin {
   void _animateResetCard() {
     if (!mounted || _resetController.isAnimating || _controller.isAnimating) return;
     final curve = Curves.elasticOut;
-    final offsetAnim = Tween<Offset>(begin: _dragOffset, end: Offset.zero)
-        .animate(CurvedAnimation(parent: _resetController, curve: curve));
-    final angleAnim = Tween<double>(begin: _dragAngle, end: 0.0)
-        .animate(CurvedAnimation(parent: _resetController, curve: curve));
+    final offsetAnim = Tween<Offset>(begin: _dragOffset, end: Offset.zero).animate(CurvedAnimation(parent: _resetController, curve: curve));
+    final angleAnim = Tween<double>(begin: _dragAngle, end: 0.0).animate(CurvedAnimation(parent: _resetController, curve: curve));
     void listener() {
       if (_resetController.isAnimating && mounted) {
         setState(() {
@@ -1083,13 +749,7 @@ class _CardItemState extends State<CardItem> with TickerProviderStateMixin {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 3))],
             ),
             child: Material(
               color: Colors.transparent,
@@ -1097,10 +757,7 @@ class _CardItemState extends State<CardItem> with TickerProviderStateMixin {
               child: Ink(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: widget.secondaryColor.withOpacity(0.3),
-                    width: 1.5,
-                  ),
+                  border: Border.all(color: widget.secondaryColor.withOpacity(0.3), width: 1.5),
                 ),
                 child: Center(
                   child: Padding(
@@ -1109,12 +766,7 @@ class _CardItemState extends State<CardItem> with TickerProviderStateMixin {
                       capitalizeFirst(widget.card.text),
                       textAlign: TextAlign.center,
                       wrapWords: true,
-                      style: TextStyle(
-                        color: widget.textColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        height: 1.2,
-                      ),
+                      style: TextStyle(color: widget.textColor, fontSize: 18, fontWeight: FontWeight.w600, height: 1.2),
                       maxLines: 5,
                       minFontSize: 10,
                       overflow: TextOverflow.ellipsis,
